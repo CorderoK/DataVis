@@ -2,9 +2,15 @@ import streamlit as st
 import pandas as pd
 import altair as alt
 
+# -------------------------------
+# Page Config
+# -------------------------------
 st.set_page_config(layout="wide")
 st.title("COMPAS Risk Assessment Dashboard")
 
+# -------------------------------
+# Load Data
+# -------------------------------
 @st.cache_data
 def load_data():
     df = pd.read_csv("compas-scores-two-years.csv")
@@ -32,7 +38,7 @@ if selected_age_group != "All":
     filtered_df = filtered_df[filtered_df["age_cat"] == selected_age_group]
 
 # -------------------------------
-# Chart 1 – COMPAS vs Recidivism Line Chart (interactive legend)
+# Chart 1 – COMPAS vs Recidivism Line Chart
 # -------------------------------
 grouped = filtered_df.groupby("priors_bin").agg({
     "decile_score": "mean",
@@ -51,7 +57,7 @@ line_data = pd.DataFrame({
 metric_selection = alt.selection_point(fields=["Metric"], bind="legend")
 
 line_chart = alt.Chart(line_data).mark_line(point=True).encode(
-    x="Prior Convictions:N",
+    x=alt.X("Prior Convictions:N", sort=["0", "1-2", "3-5", "6-10", "11-20", "21+"]),
     y=alt.Y("Score:Q", scale=alt.Scale(domain=[0, 1])),
     color="Metric:N",
     tooltip=["Prior Convictions", "Score", "Metric"],
@@ -65,12 +71,10 @@ line_chart = alt.Chart(line_data).mark_line(point=True).encode(
 )
 
 # -------------------------------
-# Chart 2 – Faceted Scatter (Recidivism vs Age by Race and Gender)
+# Chart 2 – Faceted Scatter Plot
 # -------------------------------
-# Recidivism interactive legend
 recidivism_selection = alt.selection_point(fields=["recidivism_status"], bind="legend")
 
-# Base scatter chart
 base_scatter = alt.Chart(
     filtered_df.dropna(subset=["age", "decile_score"])
 ).mark_circle(size=30).encode(
@@ -86,16 +90,14 @@ base_scatter = alt.Chart(
     height=150
 )
 
-# Now facet it correctly
 faceted_scatter = base_scatter.facet(
     column=alt.Column("race:N", title="Race"),
     row=alt.Row("sex:N", title="Sex"),
     title="COMPAS Risk Score vs. Age by Race and Gender"
 ).interactive()
 
-
 # -------------------------------
-# Chart 3 – Error Rates (interactive legend)
+# Chart 3 – Bar Chart (Error Rates)
 # -------------------------------
 error_data = pd.DataFrame({
     "Race": ["African-American", "Asian", "Caucasian", "Hispanic", "Native American", "Other"],
@@ -120,8 +122,15 @@ bar_chart = alt.Chart(error_data).mark_bar().encode(
 )
 
 # -------------------------------
-# Display All Charts
+# Display Charts
 # -------------------------------
-st.altair_chart(line_chart, use_container_width=True)
+col1, col2 = st.columns(2)
+
+with col1:
+    st.altair_chart(line_chart, use_container_width=True)
+
+with col2:
+    st.altair_chart(bar_chart, use_container_width=True)
+
+# Scatter plot full-width below
 st.altair_chart(faceted_scatter, use_container_width=True)
-st.altair_chart(bar_chart, use_container_width=True)
